@@ -65,6 +65,9 @@ def main_worker():
                     progress=f'{update.status} Step: {update.current_step}, Total: {update.total_steps}'
                 )
 
+        if "output_dir" in input_data:
+            del input-data["output_dir"]
+
         job = session.submit_task(input_data, callbacks=WorkerCallbacks())
         result = job.result()
 
