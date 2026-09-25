@@ -121,7 +121,7 @@ def main_worker():
                 "--verbose", "0"
             ],
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True
         )
 
