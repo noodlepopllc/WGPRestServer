@@ -157,6 +157,7 @@ def run_job():
         ["python3", "./worker.py", json.dumps(args)],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        cwd=os.environ["WAN2GP_DIRECTORY"],
         env=os.environ
     )
 
