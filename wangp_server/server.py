@@ -154,15 +154,24 @@ def run_job():
     args = request.json
 
     proc = subprocess.Popen(
-        ["python3", "./worker.py", json.dumps(args)],
+        ["python3", "worker.py", json.dumps(args)],
+        cwd="/home/todd/WGPRestServer/wan2gp",
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        cwd=os.environ["WAN2GP_DIRECTORY"],
         env=os.environ
     )
 
-    job_id = proc.stdout.readline().decode().strip()
-    return json.dumps(job_id)
+    stdout, stderr = proc.communicate()
+
+    job_id = stdout.decode().strip()
+
+    if not job_id:
+        return {
+            "error": "worker failed",
+            "stderr": stderr.decode()
+        }
+
+    return {"job_id": job_id}
 
 @route('/status')
 def allstatus():
