@@ -6,3 +6,4 @@ dependencies = []
 
 [project.scripts]
 restserver = "wangp_server.server:main"
+restworker = "wangp_server.worker:main"
