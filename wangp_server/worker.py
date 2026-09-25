@@ -147,12 +147,11 @@ def main_worker():
                 db.add_job_update(job_id, progress=line)
 
         exit_code = job.wait()
-        stderr_output = job.stderr.read()
 
         if exit_code == 0 and queue_completed:
             db.set_job_state(job_id, "complete", "success")
         else:
-            db.set_job_state(job_id, "failed", f"exit={exit_code}\nstderr={stderr_output}")
+            db.set_job_state(job_id, "failed", f"exit={exit_code}")
 
 
     except Exception as e:
