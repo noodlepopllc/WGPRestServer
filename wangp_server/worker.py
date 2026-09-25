@@ -66,7 +66,7 @@ def main_worker():
                 )
 
         if "output_dir" in input_data:
-            del input-data["output_dir"]
+            del input_data["output_dir"]
 
         job = session.submit_task(input_data, callbacks=WorkerCallbacks())
         result = job.result()
