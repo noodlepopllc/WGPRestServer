@@ -1,5 +1,5 @@
 # worker.py
-import os, sys, json, traceback
+import os, sys, json, traceback, subprocess
 from pathlib import Path
 from wangp_server.sql_manager import JobDB
 
@@ -28,7 +28,7 @@ def create_session(attention="sdpa", profile="4", output_dir=None, console=False
 # ---------------------------------------------------------
 # 1. Long-running job worker
 # ---------------------------------------------------------
-def main_worker():
+def main_worker_old():
     db = JobDB(os.environ["WAN2GP_DB"])
     input_data = json.loads(sys.argv[1])
 
@@ -76,6 +76,84 @@ def main_worker():
             "complete",
             f'success: {result.success}, files: {result.generated_files}, errors: {result.errors}'
         )
+
+    except Exception as e:
+        tb = traceback.format_exc()
+        db.set_job_state(job_id, "failed", tb)
+
+
+def main_worker():
+    db = JobDB(os.environ["WAN2GP_DB"])
+    input_data = json.loads(sys.argv[1])
+
+    wan2gp = os.environ["WAN2GP_DIRECTORY"]
+    os.chdir(wan2gp)
+
+    parent_pid = os.getppid()
+    child_pid = os.getpid()
+
+    if job_id := db.any_job_running():
+        print(job_id, flush=True)
+        return
+
+    job_id = db.insert_job(parent_pid, child_pid, input_data)
+    db.set_job_state(job_id, "pending")
+
+    # Return job_id immediately
+    print(job_id, flush=True)
+
+    db.set_job_state(job_id, "running")
+
+    output_dir = input_data.get("output_dir", "outputs")
+
+    # Write JSON payload for CLI
+    with open('tmp.json', 'w') as fn:
+        json.dump(input_data, fn)
+
+    try:
+        # Correct subprocess invocation
+        job = subprocess.Popen(
+            [
+                "python",
+                "wgp.py",
+                "--process", "tmp.json",
+                "--output-dir", output_dir,
+                "--verbose", "0"
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        queue_completed = False
+
+        for raw in job.stdout:
+            line = raw.rstrip()
+
+            # tqdm progress
+            if "%" in line and "|" in line:
+                parts = line.split("|")
+                pct = parts[0].strip()
+                step = parts[-1].split()[0]
+                db.add_job_update(job_id, progress=f"{pct} {step}")
+                continue
+
+            # queue completed marker
+            if "Queue completed" in line:
+                queue_completed = True
+
+            # normal progress
+            if line:
+                db.add_job_update(job_id, progress=line)
+
+        exit_code = job.wait()
+        stderr_output = job.stderr.read()
+
+        if exit_code == 0 and queue_completed:
+            db.set_job_state(job_id, "complete", "success")
+        else:
+            db.set_job_state(job_id, "failed", f"exit={exit_code}\nstderr={stderr_output}")
+
 
     except Exception as e:
         tb = traceback.format_exc()
