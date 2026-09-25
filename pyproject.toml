@@ -6,4 +6,7 @@ dependencies = []
 
 [project.scripts]
 restserver = "wangp_server.server:main"
-restworker = "wangp_server.worker:main"
+restworker = "wangp_server.worker:main_worker"
+restmodels = "wangp_server.worker:main_models"
+restdefaults = "wangp_server.worker:main_defaults"
+

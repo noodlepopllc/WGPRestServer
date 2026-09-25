@@ -34,84 +34,49 @@ def purge_cache():
             pass
 
 def fetch_models_runtime():
-    r, w = os.pipe()
-    pid = os.fork()
+    proc = subprocess.run(
+        ["restmodels"],
+        capture_output=True,
+        text=True,
+        env=os.environ
+    )
+    out = proc.stdout
 
-    if pid == 0:
-        os.close(r)
+    # Find the first JSON object start
+    idx = out.find("{")
+    if idx == -1:
+        return {"error": "no JSON found", "stdout": out, "stderr": proc.stderr}
 
-        # 1. Child sets up environment
-        import sys
-        from pathlib import Path
+    clean = out[idx:].strip()
 
-        wan2gp = os.environ.get("WAN2GP_DIRECTORY")
-        os.chdir(wan2gp)
-        sys.path.append('.')
+    try:
+        return json.loads(clean)
+    except Exception as e:
+        return {"error": str(e), "stdout": clean, "stderr": proc.stderr}
 
-        # 2. Child initializes Wan2GP runtime
-        from shared.api import init
-
-        session = init(
-            root=Path(wan2gp),
-            cli_args=["--attention", "sdpa", "--profile", "4"],
-            console_output=False
-        )
-
-        # 3. Child fetches availability
-        available = [x for x in session.list_model_availability() if x["available"]]
-
-        # 4. Child writes JSON to pipe
-        os.write(w, json.dumps(available).encode())
-        os.close(w)
-
-        # 5. Child exits cleanly
-        os._exit(0)
-
-    # Parent: read result
-    os.close(w)
-    data = os.read(r, 1_000_000)
-    os.close(r)
-    return json.loads(data)
 
 def fetch_model_defaults(model_id):
-    r, w = os.pipe()
-    pid = os.fork()
+    proc = subprocess.run(
+        ["restdefaults", model_id],
+        capture_output=True,
+        text=True,
+        env=os.environ
+    )
+    out = proc.stdout
 
-    if pid == 0:
-        os.close(r)
+    # Find the first JSON object start
+    idx = out.find("{")
+    if idx == -1:
+        return {"error": "no JSON found", "stdout": out, "stderr": proc.stderr}
 
-        # 1. Child sets up environment
-        import sys
-        from pathlib import Path
+    clean = out[idx:].strip()
 
-        wan2gp = os.environ.get("WAN2GP_DIRECTORY")
-        print("WANGP", wan2gp)
-        os.chdir(wan2gp)
-        sys.path.append('.')
+    try:
+        return json.loads(clean)
+    except Exception as e:
+        return {"error": str(e), "stdout": clean, "stderr": proc.stderr}
 
-        # 2. Child initializes Wan2GP runtime
-        from shared.api import init
 
-        session = init(
-            root=Path(wan2gp),
-            cli_args=["--attention", "sdpa", "--profile", "4"],
-            console_output=False
-        )
-
-        default = session.get_default_settings(model_id)
-
-        # 4. Child writes JSON to pipe
-        os.write(w, json.dumps(default).encode())
-        os.close(w)
-
-        # 5. Child exits cleanly
-        os._exit(0)
-
-    # Parent: read result
-    os.close(w)
-    data = os.read(r, 1_000_000)
-    os.close(r)
-    return json.loads(data)
 
 @route('/defaults/<model_id>')
 def defaults(model_id):
