@@ -1,5 +1,5 @@
 # worker.py
-import os, sys, json
+import os, sys, json, traceback
 from pathlib import Path
 from wangp_server.sql_manager import JobDB
 
@@ -75,7 +75,10 @@ def main_worker():
         )
 
     except Exception as e:
-        db.set_job_state(job_id, "failed", f'exception: {str(e)}')
+        tb = traceback.format_exc()
+        db.set_job_state(job_id, "failed", tb)
+
+
 
 
 # ---------------------------------------------------------
