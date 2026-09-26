@@ -117,6 +117,7 @@ def main_worker():
                 "python",
                 "wgp.py",
                 "--process", "tmp.json",
+                "--profile", "4+",
                 "--output-dir", output_dir,
                 "--verbose", "0"
             ],
