@@ -105,6 +105,8 @@ def main_worker():
     db.set_job_state(job_id, "running")
 
     output_dir = input_data.get("output_dir", "outputs")
+    if 'output_dir' in input_data:
+        del input_data['output_dir']
 
     # Write JSON payload for CLI
     with open('tmp.json', 'w') as fn:
